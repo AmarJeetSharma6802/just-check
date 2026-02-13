@@ -2,6 +2,10 @@ import User from "../model/user.model.ts"
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express"; 
 
+interface JwtPayloadType {
+  user_id: string;
+}
+
 export const authUser =async(req:Request,res:Response,next:NextFunction): Promise<void>=> {
     try {
         
@@ -14,7 +18,7 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
     return;
   }
 
-  const decoded = jwt.verify(token ,process.env.ACCESSTOKEN as string)
+  const decoded = jwt.verify(token ,process.env.ACCESSTOKEN as string) as JwtPayloadType
 
   const user = await User.findById(decoded.user_id)
       .select("-password -refreshToken -__v");
@@ -33,3 +37,4 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
 
 }
 
+// Record ek type helper hai jo object ka structure define karta hai.
