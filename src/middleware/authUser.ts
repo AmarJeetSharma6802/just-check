@@ -1,7 +1,12 @@
 import User from "../model/user.model.ts"
 import jwt from "jsonwebtoken";
+<<<<<<< HEAD
 import type { Request, Response, NextFunction } from "express"; 
 import logger from "../utils/logger.ts";
+=======
+import type { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger.ts"; 
+>>>>>>> changes_by_me
 
 interface JwtPayloadType {
   user_id: string;
