@@ -1,6 +1,7 @@
 import User from "../model/user.model.ts"
 import jwt from "jsonwebtoken";
-import type { Request, Response, NextFunction } from "express"; 
+import type { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger.ts"; 
 
 interface JwtPayloadType {
   user_id: string;
@@ -32,6 +33,7 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
 
     next();
     } catch (error) {
+       logger.error("Auth middleware error", error);
          res.status(401).json({ message: "Invalid token" });
     }
 
