@@ -10,7 +10,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     
-    process.env.NODE_ENV === "development"
+    process.env.NODE_ENV === "development" 
       ? winston.format.colorize()
       : winston.format.uncolorize(),
     winston.format.printf(({ timestamp, level, message, stack }) => {
