@@ -12,7 +12,7 @@ import {redis} from "../config/redis.ts"
 
 import transporter from "../utils/nodemailer.ts"
 
-export const authHandler = async (req: Request, res: Response) => {
+export const auth = async (req: Request, res: Response) => {
   try {
     const { name, email, password, otp, action } = req.body;
 
@@ -39,10 +39,12 @@ export const authHandler = async (req: Request, res: Response) => {
           name,
           email,
           password: hashedPassword,
-          emailOtp: hashedOtp,
-          emailOtpExpires: new Date(Date.now() + 5 * 60 * 1000),
+          // emailOtp: hashedOtp,
+          // emailOtpExpires: new Date(Date.now() + 5 * 60 * 1000),
         },
       });
+
+       await redis.set(`otp:${email}`, hashedOtp, { ex: 300 });
 
       await transporter.sendMail({
         to: email,
@@ -67,24 +69,35 @@ export const authHandler = async (req: Request, res: Response) => {
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      if (!user.emailOtp || user.emailOtpExpires! < new Date()) {
+      // db setup
+      // if (!user.emailOtp || user.emailOtpExpires! < new Date()) {
+      //   return res.status(400).json({ message: "OTP expired" });
+      // }
+
+      // const isValid = await bcrypt.compare(otp, user.emailOtp);
+      // if (!isValid) {
+      //   logger.warn(`Invalid OTP attempt: ${email}`);
+      //   return res.status(400).json({ message: "Invalid OTP" });
+      // }
+
+      // redis setup
+       const storedOtp = await redis.get(`otp:${email}`);
+      if (!storedOtp)
         return res.status(400).json({ message: "OTP expired" });
-      }
 
-      const isValid = await bcrypt.compare(otp, user.emailOtp);
-      if (!isValid) {
-        logger.warn(`Invalid OTP attempt: ${email}`);
+
+       const valid = await bcrypt.compare(otp, storedOtp as string);
+      if (!valid)
         return res.status(400).json({ message: "Invalid OTP" });
-      }
-
+      
       const accessToken = jwt.sign(
-        { id: user.id },
+        { user_id: user.id },
         process.env.ACCESSTOKEN!,
         { expiresIn: "15m" }
       );
 
       const refreshToken = jwt.sign(
-        { id: user.id },
+        { user_id: user.id },
         process.env.REFRESHTOKEN!,
         { expiresIn: "7d" }
       );
@@ -148,14 +161,26 @@ export const authHandler = async (req: Request, res: Response) => {
       return res.json({ message: "Login successful" });
     }
 
-    return res.status(400).json({ message: "Invalid action" });
+    return res.status(400).json({ message: "Invalid action",receivedAction: action, });
+    
   } catch (error) {
     logger.error(`Auth error: ${error}`);
     return res.status(500).json({ message: "Server error" });
   }
+  ;
 };
 
 
 // Case	Return type
 // return res.json() karte ho	Promise<Response>
 // sirf res.json() call karte ho	Promise<void>
+
+
+// Email isliye use karte hain taki pata chale:
+
+// kaunsa OTP kis user ka hai
+
+// Example:
+
+// Key: otp:rahul@gmail.com
+// Value: 7845 (hashed)
