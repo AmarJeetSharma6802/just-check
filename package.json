@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon --exec node --loader ts-node/esm src/index.ts",
+    "dev": "nodemon --exec node --import ts-node/register src/index.ts",
     "build": "tsc"
   },
   "keywords": [],
@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "@upstash/redis": "^1.36.2",
     "bcryptjs": "^3.0.3",
@@ -32,6 +33,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.2.3",
     "@types/nodemailer": "^7.0.9",
+    "@types/pg": "^8.16.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",

@@ -1,9 +1,7 @@
-// import type { Request, Response } from "express"; //"verbatimModuleSyntax": true
-// // import { Request, Response } from "express"; normal import  "verbatimModuleSyntax": false
+import type { Request, Response } from "express"; //"verbatimModuleSyntax": true
+//  import { Request, Response } from "express"; //normal import  "verbatimModuleSyntax": false
 // // import user from "../model/user.model.js"
-// import logger from "../utils/logger.ts";
 
-import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../DB/primsa.ts";
@@ -15,15 +13,19 @@ import transporter from "../utils/nodemailer.ts"
 export const auth = async (req: Request, res: Response) => {
   try {
     const { name, email, password, otp, action } = req.body;
+    console.log("REQ BODY:", req.body);
 
     /* ================= REGISTER ================= */
     if (action === "register") {
+
+      
       if (!name || !email || !password) {
         logger.warn("Register failed: missing fields");
         return res.status(400).json({ message: "All fields required" });
       }
 
       const exists = await prisma.user.findUnique({ where: { email } });
+
       if (exists) {
         logger.warn(`Register failed: ${email} already exists`);
         return res.status(400).json({ message: "Email already registered" });
@@ -169,6 +171,18 @@ export const auth = async (req: Request, res: Response) => {
   }
   ;
 };
+
+export const fetchUser = async(req:Request,res:Response)=>{
+
+const finsUser = await prisma.user.findMany()
+
+if(!finsUser){
+  logger.error(`Auth error: ${finsUser}`);
+    return res.status(500).json({ message: "User not fetch " });
+}
+
+return res.status(201).json({message:"fetch succefully",finsUser})
+}
 
 
 // Case	Return type
