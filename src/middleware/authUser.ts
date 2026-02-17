@@ -31,6 +31,7 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
 
     (req as any).user = user; // attach user to request
 
+
     next();
     } catch (error) {
        logger.error("Auth middleware error", error);
