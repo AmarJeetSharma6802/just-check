@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express"
-import { auth,fetchUser } from "./controllers/auth.controller.ts";
 import logger from "./utils/logger.ts";
 // import dotenv from 'dotenv'
 
@@ -21,8 +20,8 @@ app.get("/", (req, res) => {
   res.send("Server is running on port 3000");
 });
 
-app.post("/post",auth)
-app.get("/user",fetchUser)
+import userRouter from "./router/router.ts"
+app.use("/api",userRouter)
 
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);

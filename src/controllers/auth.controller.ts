@@ -6,9 +6,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../DB/primsa.ts";
 import logger from "../utils/logger.ts";
-import {redis} from "../config/redis.ts"
+import { redis } from "../config/redis.ts";
 
-import transporter from "../utils/nodemailer.ts"
+import transporter from "../utils/nodemailer.ts";
 
 export const auth = async (req: Request, res: Response) => {
   try {
@@ -17,8 +17,6 @@ export const auth = async (req: Request, res: Response) => {
 
     /* ================= REGISTER ================= */
     if (action === "register") {
-
-      
       if (!name || !email || !password) {
         logger.warn("Register failed: missing fields");
         return res.status(400).json({ message: "All fields required" });
@@ -46,7 +44,7 @@ export const auth = async (req: Request, res: Response) => {
         },
       });
 
-       await redis.set(`otp:${email}`, hashedOtp, { ex: 300 });
+      await redis.set(`otp:${email}`, hashedOtp, { ex: 300 });
 
       await transporter.sendMail({
         to: email,
@@ -83,32 +81,30 @@ export const auth = async (req: Request, res: Response) => {
       // }
 
       // redis setup
-       const storedOtp = await redis.get(`otp:${email}`);
-      if (!storedOtp)
-        return res.status(400).json({ message: "OTP expired" });
+      const storedOtp = await redis.get(`otp:${email}`);
+      if (!storedOtp) return res.status(400).json({ message: "OTP expired" });
 
+      const valid = await bcrypt.compare(otp, storedOtp as string);
+      if (!valid) return res.status(400).json({ message: "Invalid OTP" });
 
-       const valid = await bcrypt.compare(otp, storedOtp as string);
-      if (!valid)
-        return res.status(400).json({ message: "Invalid OTP" });
-      
       const accessToken = jwt.sign(
         { user_id: user.id },
         process.env.ACCESSTOKEN!,
-        { expiresIn: "15m" }
+        { expiresIn: "15m" },
       );
 
       const refreshToken = jwt.sign(
         { user_id: user.id },
         process.env.REFRESHTOKEN!,
-        { expiresIn: "7d" }
+        { expiresIn: "7d" },
       );
 
       await prisma.user.update({
         where: { email },
         data: {
-          emailOtp: null,
-          emailOtpExpires: null,
+          // emailOtp: null, db methods
+          // emailOtpExpires: null,
+          isVerified:true,
           refreshToken,
         },
       });
@@ -129,8 +125,19 @@ export const auth = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "Email and password required" });
       }
 
+      //  attempts of login
+      const attempts = await redis.incr(`login_attempt:${email}`);
+      if (attempts === 1) await redis.expire(`login_attempt:${email}`, 600);
+
+      if (attempts > 5)
+        return res.status(429).json({ message: "Too many login attempts" });
+
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return res.status(404).json({ message: "User not found" });
+
+      if(!user.isVerified){
+        return res.status(404).json({ message: "User not verified" });
+      }
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
@@ -138,57 +145,61 @@ export const auth = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "Invalid credentials" });
       }
 
-      const accessToken = jwt.sign(
-        { id: user.id },
-        process.env.ACCESSTOKEN!,
-        { expiresIn: "15m" }
-      );
+      // attempts delete
+      await redis.del(`login_attempt:${email}`);
+
+      const accessToken = jwt.sign({ id: user.id }, process.env.ACCESSTOKEN!, {
+        expiresIn: "15m",
+      });
 
       const refreshToken = jwt.sign(
         { id: user.id },
         process.env.REFRESHTOKEN!,
-        { expiresIn: "7d" }
+        { expiresIn: "7d" },
       );
 
+      // for db 
       await prisma.user.update({
         where: { email },
         data: { refreshToken },
       });
+
+      // redis store session 
+      await redis.set(`session:${user.id}`, refreshToken, { ex: 604800 });
 
       res.cookie("accessToken", accessToken, { httpOnly: true });
       res.cookie("refreshToken", refreshToken, { httpOnly: true });
 
       logger.info(`Login success: ${email}`);
 
-      return res.json({ message: "Login successful" });
+      return res.json({ message: "Login successful",user });
     }
 
-    return res.status(400).json({ message: "Invalid action",receivedAction: action, });
-    
+    return res
+      .status(400)
+      .json({ message: "Invalid action", receivedAction: action });
   } catch (error) {
     logger.error(`Auth error: ${error}`);
     return res.status(500).json({ message: "Server error" });
   }
-  ;
 };
 
-export const fetchUser = async(req:Request,res:Response)=>{
+export const fetchUser = async (req: Request, res: Response) => {
+  const finsUser = await prisma.user.findMany();
 
-const finsUser = await prisma.user.findMany()
-
-if(!finsUser){
-  logger.error(`Auth error: ${finsUser}`);
+  if (!finsUser) {
+    logger.error(`Auth error: ${finsUser}`);
     return res.status(500).json({ message: "User not fetch " });
-}
+  }
 
-return res.status(201).json({message:"fetch succefully",finsUser})
-}
+   logger.info(`Users fetched successfully ${finsUser}`);
 
+  return res.status(201).json({ message: "fetch succefully", finsUser });
+};
 
 // Case	Return type
 // return res.json() karte ho	Promise<Response>
 // sirf res.json() call karte ho	Promise<void>
-
 
 // Email isliye use karte hain taki pata chale:
 

@@ -23,6 +23,7 @@ model User {
   // emailOtp        String? // hum db me save karte hain to inki need hogi aur redis ka use karoge to inki need nahi hogi
   // emailOtpExpires DateTime?
   refreshToken    String? 
+  isVerified   Boolean  @default(false)
   createdAt       DateTime @default(now())
 }
 
