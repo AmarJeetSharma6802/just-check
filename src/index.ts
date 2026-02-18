@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express"
 import logger from "./utils/logger.ts";
+import cookieParser from "cookie-parser";
 // import dotenv from 'dotenv'
 
 const app = express();
@@ -10,6 +11,7 @@ const PORT = 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.url}`);

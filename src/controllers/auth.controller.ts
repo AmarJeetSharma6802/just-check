@@ -104,7 +104,7 @@ export const auth = async (req: Request, res: Response) => {
         data: {
           // emailOtp: null, db methods
           // emailOtpExpires: null,
-          isVerified:true,
+          isVerified: true,
           refreshToken,
         },
       });
@@ -135,7 +135,7 @@ export const auth = async (req: Request, res: Response) => {
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      if(!user.isVerified){
+      if (!user.isVerified) {
         return res.status(404).json({ message: "User not verified" });
       }
 
@@ -148,23 +148,23 @@ export const auth = async (req: Request, res: Response) => {
       // attempts delete
       await redis.del(`login_attempt:${email}`);
 
-      const accessToken = jwt.sign({ id: user.id }, process.env.ACCESSTOKEN!, {
+      const accessToken = jwt.sign({ user_id: user.id }, process.env.ACCESSTOKEN!, {
         expiresIn: "15m",
       });
 
       const refreshToken = jwt.sign(
-        { id: user.id },
+        { user_id: user.id },
         process.env.REFRESHTOKEN!,
         { expiresIn: "7d" },
       );
 
-      // for db 
+      // for db
       await prisma.user.update({
         where: { email },
         data: { refreshToken },
       });
 
-      // redis store session 
+      // redis store session
       await redis.set(`session:${user.id}`, refreshToken, { ex: 604800 });
 
       res.cookie("accessToken", accessToken, { httpOnly: true });
@@ -172,7 +172,7 @@ export const auth = async (req: Request, res: Response) => {
 
       logger.info(`Login success: ${email}`);
 
-      return res.json({ message: "Login successful",user });
+      return res.json({ message: "Login successful", user });
     }
 
     return res
@@ -184,6 +184,81 @@ export const auth = async (req: Request, res: Response) => {
   }
 };
 
+export const updateAccount = async (req: Request, res: Response) => {
+  const { name } = req.body;
+
+  if (!name) {
+    return res
+      .status(400)
+      .json({ message: "name field required for update name" });
+  }
+
+  const updateUser = await prisma.user.update({
+    where: {
+      id: (req as any).user.id,
+    },
+    data: {
+      name: name,
+    },
+  });
+
+  return res.status(200).json({
+    message: "Account updated successfully",
+    user: updateUser,
+  });
+};
+
+ export const changePassword = async (req: Request, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ message: "password is field required" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: (req as any).user.email },
+  });
+
+  if (!user) {
+    logger.warn(`user not found ${user}`);
+    return res.status(400).json({ message: "user not found " });
+  }
+
+  const matchPass = await bcrypt.compare(oldPassword, user.password);
+  logger.warn(`old password not match ${matchPass}`);
+  if (!matchPass) {
+    return res.status(400).json({ message: "Old password does not match" });
+  }
+
+  const saltPass = await bcrypt.genSalt(10)
+  const hassNewPassword = await bcrypt.hash(newPassword,saltPass)
+
+  user.password = hassNewPassword
+  await prisma.user.update(
+    {
+      where:{id :user.id},
+      data:{
+        password:newPassword
+      }
+    }
+  )
+
+  return res.status(201).json({ message: "Password changed successfully"})
+};
+
+export const deleteAccount = async(req: Request, res: Response)=>{
+
+  const userId = (req as any).user.id
+
+   const deleteAcc = await prisma.user.delete({
+    where: { id: userId }
+  });
+
+ return res.json({ message: "Account deleted successfully", deleteAcc });
+
+
+}
+
 export const fetchUser = async (req: Request, res: Response) => {
   const finsUser = await prisma.user.findMany();
 
@@ -192,7 +267,7 @@ export const fetchUser = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "User not fetch " });
   }
 
-   logger.info(`Users fetched successfully ${finsUser}`);
+  logger.info(`Users fetched successfully ${finsUser}`);
 
   return res.status(201).json({ message: "fetch succefully", finsUser });
 };

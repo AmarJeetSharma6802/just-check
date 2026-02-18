@@ -1,7 +1,7 @@
-import User from "../model/user.model.ts"
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express"; 
 import logger from "../utils/logger.ts";
+import prisma from "../DB/primsa.ts"
 
 interface JwtPayloadType {
   user_id: string;
@@ -11,7 +11,7 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
     try {
         
         const token =
-      req.cookies.accessToken?.value ||
+      req.cookies.accessToken ||
       req.headers.authorization?.replace("Bearer ", "");
 
     if (!token) {
@@ -21,8 +21,9 @@ export const authUser =async(req:Request,res:Response,next:NextFunction): Promis
 
   const decoded = jwt.verify(token ,process.env.ACCESSTOKEN as string) as JwtPayloadType
 
-  const user = await User.findById(decoded.user_id)
-      .select("-password -refreshToken -__v");
+  const user = await prisma.user.findUnique({
+      where: { id: decoded.user_id }
+    });
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
