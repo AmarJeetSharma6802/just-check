@@ -25,7 +25,23 @@ model User {
   refreshToken    String? 
   isVerified   Boolean  @default(false)
   createdAt       DateTime @default(now())
+  
+  Post  Post[]
 }
+
+model Post {
+  id  String @id @default(uuid())
+    title       String
+  description String
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 
 // Agar prisma.config.ts use kar rahe ho to:
 // npx prisma generate --schema=prisma/schema.prisma
+

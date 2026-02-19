@@ -9,3 +9,13 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    volumes:
+      - "C:/Users/acer/Desktop/Full stack development/deploy webiste/UpcomigProject/backendAssignment/volume_data:/app/logs"
+
+
+
+
+
+# docker build -t stackpilothub/production_ready:latest .
+# docker login
+# docker push stackpilothub/production_ready:latest
