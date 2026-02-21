@@ -41,6 +41,11 @@ model Post {
   updatedAt   DateTime @updatedAt
 }
 
+model doctor{
+ id  String @id @default(uuid())
+name String
+
+}
 
 // Agar prisma.config.ts use kar rahe ho to:
 // npx prisma generate --schema=prisma/schema.prisma
