@@ -41,10 +41,43 @@ model Post {
   updatedAt   DateTime @updatedAt
 }
 
-model doctor{
- id  String @id @default(uuid())
-name String
+model Doctor {
+  id             String              @id @default(uuid())
+  name           String
+  specialization String?
+  createdAt      DateTime            @default(now())
+  availability   DoctorAvailability[]
+  appointments   Appointment[]
+}
 
+model DoctorAvailability {
+  id            String   @id @default(uuid())
+  doctorId      String
+  doctor        Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  dayOfWeek     Int      // 0=Sunday, 6=Saturday
+  startTime     String   // "09:00"
+  endTime       String   // "17:00"
+  slotDuration  Int      @default(30)
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  patientId       String   // auth user id
+  doctorId        String
+  doctor          Doctor   @relation(fields: [doctorId], references: [id])
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  status          String   @default("booked") // booked | cancelled | completed
+
+ // Patient info (self ya other person)
+  patientName     String
+  patientAge      Int
+  patientPhone    String?
+  isForSelf       Boolean  @default(true)
+  
+
+  createdAt       DateTime @default(now())
 }
 
 // Agar prisma.config.ts use kar rahe ho to:

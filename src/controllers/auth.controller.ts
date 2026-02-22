@@ -272,6 +272,47 @@ export const fetchUser = async (req: Request, res: Response) => {
   return res.status(201).json({ message: "fetch succefully", finsUser });
 };
 
+export const refreshAccessToken = async (req: Request, res: Response) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No refresh token" });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESHTOKEN as string
+    ) as { user_id: string };
+
+    const storedToken = await redis.get(`session:${decoded.user_id}`);
+
+    if (!storedToken) {
+      return res.status(401).json({ message: "Session expired, please login again" });
+    }
+
+    if (storedToken !== refreshToken) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const newAccessToken = jwt.sign(
+      { user_id: decoded.user_id },
+      process.env.ACCESSTOKEN as string,
+      { expiresIn: "15m" }
+    );
+
+    res.cookie("accessToken", newAccessToken, { httpOnly: true });
+
+    logger.info(`Access token refreshed for user: ${decoded.user_id}`);
+
+    return res.json({ message: "Token refreshed successfully" });
+
+  } catch (error) {
+    logger.error("Refresh token error", error);
+    return res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+};
+
 // Case	Return type
 // return res.json() karte ho	Promise<Response>
 // sirf res.json() call karte ho	Promise<void>
